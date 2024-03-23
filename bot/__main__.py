@@ -17,13 +17,8 @@ def setting():
 def get_bot(token: str, proxy_url: str | None):
     builder = ApplicationBuilder().token(token)
     if proxy_url:
-        builder = builder.proxy(proxy_url)
+        builder = builder.get_updates_proxy(proxy_url).proxy(proxy_url)
     return builder.build()
-
-
-def get_arg(text: str):
-    index = text.find(' ')
-    return text[index + 1] if index != -1 else ''
 
 
 def read_simple(func: Callable[[int, int, str | None], str | None]):
@@ -31,7 +26,7 @@ def read_simple(func: Callable[[int, int, str | None], str | None]):
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                        text=func(update.effective_chat.id,
                                                  update.effective_message.message_id,
-                                                 get_arg(update.effective_message.text)))
+                                                 update.effective_message.text))
 
     return handler
 
@@ -42,7 +37,7 @@ def read_reply(func: Callable[[int, int, int, str | None], str | None]):
                                        text=func(update.effective_chat.id,
                                                  update.effective_message.message_id,
                                                  update.effective_message.reply_to_message.message_id,
-                                                 get_arg(update.effective_message.text)))
+                                                 update.effective_message.text))
 
     return handler
 

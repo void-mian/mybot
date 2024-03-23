@@ -64,7 +64,7 @@ def reminder_monthly(chat_id: int, message_id: int, dt: str | None) -> str | Non
 
     try:
         if dt:
-            dtime = dateutil.parser.parse(timestr=dt)
+            dtime = dateutil.parser.parse(timestr=dt, fuzzy=True)
             if dtime is None or dtime.tzinfo is None:
                 return "日期格式错误"
         else:
