@@ -3,7 +3,8 @@ import app
 import db
 from config import config
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.constants import ParseMode
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 from typing import Callable
 
 
@@ -34,6 +35,12 @@ class Response(app.BaseResponse):
         self.tasks.append(self.context.bot.send_message(chat_id=chat_id,
                                                         reply_to_message_id=message_id,
                                                         text=text))
+
+    def send_markdown_reply(self, chat_id: int, message_id: int, text: str):
+        self.tasks.append(self.context.bot.send_message(chat_id=chat_id,
+                                                        reply_to_message_id=message_id,
+                                                        text=text,
+                                                        parse_mode=ParseMode.MARKDOWN_V2))
 
 
 def make_handler(func: Callable[[app.BaseRequest, app.BaseResponse], None]):
@@ -72,5 +79,6 @@ if __name__ == "__main__":
     bot.add_handler(CommandHandler('shut_up', make_handler(app.shut_up)))
     bot.add_handler(CommandHandler('reminder_monthly', make_handler(app.reminder_monthly)))
     bot.add_handler(CommandHandler('cancel', make_handler(app.cancel)))
+    bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), make_handler(app.nbnhhsh)))
     bot.job_queue.run_repeating(make_schedule(app.check_reminders), 30)
     bot.run_polling()

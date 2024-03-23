@@ -6,6 +6,8 @@ from dateutil.relativedelta import relativedelta
 import dateutil.parser
 from zoneinfo import ZoneInfo
 import pickle
+import re
+import requests
 
 
 class BaseRequest:
@@ -24,6 +26,15 @@ class BaseResponse(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def send_reply(self, chat_id: int, message_id: int, text: str) -> None:
         pass
+
+    @abc.abstractmethod
+    def send_markdown_reply(self, chat_id: int, message_id: int, text: str) -> None:
+        pass
+
+
+def has_enabled(chat_id: int):
+    chat, created = Chat.get_or_create(chat_id=str(chat_id))
+    return chat.enabled
 
 
 def start(req: BaseRequest, res: BaseResponse):
@@ -78,8 +89,7 @@ def reminder_monthly(req: BaseRequest, res: BaseResponse):
     chat_id = req.chat_id
     message_id = req.message_id
     dt = req.text
-    chat, created = Chat.get_or_create(chat_id=str(chat_id))
-    if not chat.enabled:
+    if not has_enabled(chat_id):
         return
 
     try:
@@ -120,7 +130,29 @@ def cancel0(chat_id: int, message_id: int) -> str:
 def cancel(req: BaseRequest, res: BaseResponse):
     chat_id = req.chat_id
     reply_to_message_id = req.reply_to_message_id
-    chat, created = Chat.get_or_create(chat_id=str(chat_id))
-    if not chat.enabled:
-        return None
+    if not has_enabled(chat_id):
+        return
     res.send(cancel0(chat_id, reply_to_message_id))
+
+
+def nbnhhsh0(msg: str) -> list[str]:
+    try:
+        results: list[dict[str, list[str]]]
+        results = requests.post('https://lab.magiconch.com/api/nbnhhsh/guess', {'text': msg}).json()
+        return results[0]['trans']
+    except (KeyError, IndexError) as error:
+        return []
+
+
+def nbnhhsh(req: BaseRequest, res: BaseResponse):
+    chat_id = req.chat_id
+    message_id = req.message_id
+    message = req.text
+    if not has_enabled(chat_id):
+        return
+
+    if bool(re.match(r'^[a-z]+$', message)):
+        readable_messages = nbnhhsh0(message)
+        if len(readable_messages) > 0:
+            messages = '/'.join(map('`{0}`'.format, readable_messages))
+            res.send_markdown_reply(chat_id, message_id, f'ta 可能是想说:"{messages}"')
