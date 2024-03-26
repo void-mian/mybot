@@ -8,14 +8,16 @@ from zoneinfo import ZoneInfo
 import pickle
 import re
 import requests
+from typing import Optional
 
 
 class BaseRequest:
-    def __init__(self, chat_id: int, message_id: int | None, reply_to_message_id: int | None, text: str | None):
+    def __init__(self, chat_id: int, message_id: int | None, reply_to_message_id: int | None, text: str | None, reply_to_message_text: Optional[str] = None):
         self.chat_id = chat_id
         self.message_id = message_id
         self.reply_to_message_id = reply_to_message_id
         self.text = text
+        self.reply_to_message_text = reply_to_message_text
 
 
 class BaseResponse(metaclass=abc.ABCMeta):
@@ -151,8 +153,25 @@ def nbnhhsh(req: BaseRequest, res: BaseResponse):
     if not has_enabled(chat_id):
         return
 
-    if bool(re.match(r'^[a-z]+$', message)):
-        readable_messages = nbnhhsh0(message)
-        if len(readable_messages) > 0:
-            messages = '/'.join(map('`{0}`'.format, readable_messages))
-            res.send_markdown_reply(chat_id, message_id, f'ta 可能是想说:"{messages}"')
+    # slice for ignoring the command it self
+    bhhsh_list = re.findall(r'[A-Za-z0-9]+', message)[1:]
+    
+    if len(bhhsh_list) == 0:
+        message = req.reply_to_message_text
+        logging.info(f"no bhhsh found, refering to replying message {message}")
+        bhhsh_list = re.findall(r'[A-Za-z0-9]+', message)
+    
+    if len(bhhsh_list) > 0:
+        res_message = ""
+        for bhhsh in bhhsh_list:
+            logging.info(f"bhhsh: searching for {bhhsh}")
+            readable_messages = (nbnhhsh0(bhhsh))
+            if len(readable_messages) > 0:
+                messages = '/'.join(map('`{0}`'.format, readable_messages))
+                res_message += f'对于 {bhhsh}, ta 可能是想说:{messages}\n'
+            else:
+                res_message += f"对于 {bhhsh}…… 啊咧, 我好像也不明白 ta 想说什么\~\n"
+        res.send_markdown_reply(chat_id, message_id, res_message)
+        
+    else:
+        res.send("不管原文还是回复文本都没发现缩写欸，不知道你是哪里看不懂呢？")

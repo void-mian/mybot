@@ -43,16 +43,26 @@ class Response(app.BaseResponse):
                                                         parse_mode=ParseMode.MARKDOWN_V2))
 
 
-def make_handler(func: Callable[[app.BaseRequest, app.BaseResponse], None]):
+def make_handler(func: Callable[[app.BaseRequest, app.BaseResponse], None], with_reply_to_text: bool = False):
     def get_request(update: Update):
         reply_to_message = update.effective_message.reply_to_message
         return app.BaseRequest(chat_id=update.effective_chat.id,
                                message_id=update.effective_message.message_id,
                                reply_to_message_id=None if reply_to_message is None else reply_to_message.message_id,
                                text=update.effective_message.text)
+        
+    def get_request_with_reply_to_text(update: Update):
+        reply_to_message = update.effective_message.reply_to_message
+        logging.info(f"reply to {reply_to_message}")
+        return app.BaseRequest(chat_id=update.effective_chat.id,
+                               message_id=update.effective_message.message_id,
+                               reply_to_message_id=None if reply_to_message is None else reply_to_message.message_id,
+                               text=update.effective_message.text,
+                               reply_to_message_text=None if reply_to_message is None else reply_to_message.text)
+        
 
     async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        request = get_request(update)
+        request = get_request_with_reply_to_text(update)
         response = Response(update.effective_chat.id, context)
         func(request, response)
         for task in response.tasks:
@@ -79,6 +89,7 @@ if __name__ == "__main__":
     bot.add_handler(CommandHandler('shut_up', make_handler(app.shut_up)))
     bot.add_handler(CommandHandler('reminder_monthly', make_handler(app.reminder_monthly)))
     bot.add_handler(CommandHandler('cancel', make_handler(app.cancel)))
-    bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), make_handler(app.nbnhhsh)))
+    bot.add_handler(CommandHandler('hhsh', make_handler(app.nbnhhsh, with_reply_to_text=True)))
+    # bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), make_handler(app.nbnhhsh)))
     bot.job_queue.run_repeating(make_schedule(app.check_reminders), 30)
     bot.run_polling()
